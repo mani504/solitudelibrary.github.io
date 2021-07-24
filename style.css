@@ -1,0 +1,38 @@
+body {
+    background-color: rgb(17, 127, 131);
+}
+.form-style{
+   background-color: cadetblue;
+   padding: 20px;
+   background-color: rgb(206, 206, 206);
+   border-radius: 30px;
+}
+.text-decor{
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 1.5rem;
+    color: rgb(255, 255, 255);
+    font-weight: bold;
+   
+}
+.heading{
+    color: rgb(255, 255, 255);
+    font-size: 2rem;
+}
+.add-book{
+    background-color: rgb(22, 20, 20);
+    padding: 7px;
+    border-radius: 15px;
+
+}
+th{
+    color: rgb(255, 255, 255);
+    font-size: 1.5rem;
+    border: 0px;
+}
+
+td{
+    color: rgb(243, 252, 115);
+    font-size: 1.4rem;
+    font-family: monospace;
+    background-color: rgb(17, 127, 131);
+}
