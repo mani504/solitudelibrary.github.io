@@ -194,3 +194,85 @@ input_directory = 'path_to_input_directory'
 output_directory = 'path_to_output_directory'
 
 remove_text_from_images(input_directory, output_directory, num_threads=8)
+
+
+
+
+
+
+
+
+
+import cv2
+import numpy as np
+import os
+import keras_ocr
+
+# Function to detect and inpaint characters
+def inpaint_text_by_character(img, predictions):
+    # Create a mask for inpainting
+    mask = np.zeros(img.shape[:2], dtype="uint8")
+
+    # Iterate through detected words and create a mask
+    for word, box in predictions:
+        # Get the bounding box of the word
+        x_min = int(min([point[0] for point in box]))
+        y_min = int(min([point[1] for point in box]))
+        x_max = int(max([point[0] for point in box]))
+        y_max = int(max([point[1] for point in box]))
+        
+        # Create the mask for inpainting (character-level)
+        cv2.rectangle(mask, (x_min, y_min), (x_max, y_max), 255, -1)
+
+    # Inpaint the masked text regions using cv2.INPAINT_TELEA
+    inpainted_img = cv2.inpaint(img, mask, 7, cv2.INPAINT_TELEA)
+
+    # Post-processing to remove leftover dots or artifacts
+    kernel = np.ones((3, 3), np.uint8)
+    inpainted_img = cv2.morphologyEx(inpainted_img, cv2.MORPH_CLOSE, kernel)  # Dilation followed by erosion
+
+    return inpainted_img
+
+# Function to process all images in a directory
+def process_images(input_dir, output_dir, pipeline):
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Get list of all images in the input directory
+    image_filenames = [f for f in os.listdir(input_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    
+    if not image_filenames:
+        print("No image files found in the input directory.")
+        return
+    
+    # Prepare the images for batch processing
+    image_paths = [os.path.join(input_dir, fname) for fname in image_filenames]
+    images = [keras_ocr.tools.read(img_path) for img_path in image_paths]
+
+    # Detect text in all images at once using the Keras OCR pipeline
+    prediction_groups = pipeline.recognize(images)
+
+    # Process each image and save the inpainted result
+    for img, predictions, filename in zip(images, prediction_groups, image_filenames):
+        inpainted_img = inpaint_text_by_character(img, predictions)
+        
+        # Save the final image
+        output_path = os.path.join(output_dir, filename)
+        cv2.imwrite(output_path, cv2.cvtColor(inpainted_img, cv2.COLOR_RGB2BGR))  # Save in BGR format for OpenCV compatibility
+
+    print(f"Processing complete. Output images saved in '{output_dir}' directory.")
+
+# Main function to run the script
+def main():
+    input_dir = 'input'
+    output_dir = 'outputTess'
+
+    # Initialize Keras OCR pipeline once
+    pipeline = keras_ocr.pipeline.Pipeline()
+
+    # Process all images in the input directory
+    process_images(input_dir, output_dir, pipeline)
+
+# Run the script
+if __name__ == "__main__":
+    main()
