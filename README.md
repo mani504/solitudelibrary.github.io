@@ -1,81 +1,47 @@
-Here’s a sample README file that explains how to run your script, including the necessary instructions and details:
+Here's a sample `README.md` update that describes how to run your script while keeping the input and output directories defined in the code:
 
 ---
 
-# Text Inpainting using Keras OCR and OpenCV
+# Image Inpainting with Keras OCR
 
-This script detects and removes text from images by inpainting the text regions using Keras OCR for text detection and OpenCV for the inpainting process. It processes images in a specified input directory and saves the inpainted images to an output directory.
+This script detects and inpaints text characters in images using Keras OCR.
 
-## Features
+## Requirements
 
-- Uses Keras OCR to detect text in images.
-- Applies inpainting to remove detected text regions from images.
-- Batch processing of multiple images in the specified input directory.
-- Saves inpainted images to the specified output directory.
+Ensure you have the following libraries installed:
 
-## Prerequisites
+- OpenCV
+- NumPy
+- Keras OCR
 
-1. **Python 3.x**: Ensure Python is installed on your machine.
-2. **Required Python Packages**:
-   - OpenCV (`cv2`)
-   - NumPy
-   - Keras OCR
-
-You can install the required packages using `pip`:
+You can install the required libraries using the `requirements.txt` file:
 
 ```bash
-pip install opencv-python numpy keras-ocr
+pip install -r requirements.txt
 ```
 
 ## Usage
 
-### Running the Script
-
-To run the script, follow these steps:
-
-1. **Clone or download the script** into your working directory.
-
-2. **Prepare input images**:
-   - Place all images you want to process in a folder, e.g., `input`.
-
-3. **Run the script** from the command line by specifying the input and output directories.
-
-   ```bash
-   python <script_name.py> <input_directory> <output_directory>
-   ```
-
-   Replace `<script_name.py>` with the name of the script, `<input_directory>` with the folder containing your input images, and `<output_directory>` with the folder where you want the processed images to be saved.
-
-### Example:
-
-If your images are in the `input` folder and you want the results saved in the `outputTess` folder:
+To run the script, use the following command in your terminal:
 
 ```bash
-python text_inpainting.py input outputTess
+python script_name.py
 ```
 
-### Input and Output:
+**Note**: The script is set to read images from a predefined input directory (`input`) and will save the output images to a predefined output directory (`outputTess`). You can modify these directories in the code if needed.
 
-- **Input Directory**: Contains images in supported formats (`.png`, `.jpg`, `.jpeg`).
-- **Output Directory**: The inpainted images will be saved in this folder, retaining their original filenames.
+## Input Directory Structure
 
-### Notes:
+Make sure you have an `input` directory in the same location as your script, containing the images you want to process. The script supports the following image formats:
 
-- The script processes all images in the input directory in **batch** mode for optimal performance.
-- The `keras-ocr` pipeline is initialized only once for efficiency.
+- PNG
+- JPG
+- JPEG
 
-## Example Workflow
+## Output
 
-1. Place your input images inside the `input` folder.
-2. Run the script as shown above.
-3. The inpainted images will be saved in the `outputTess` folder.
-
-## Script Overview
-
-- **`inpaint_text_by_character(img, predictions)`**: Detects text bounding boxes and creates a mask to inpaint those regions.
-- **`process_images(input_dir, output_dir, pipeline)`**: Processes all images in the input directory, detects text, applies inpainting, and saves the output.
-- **`main()`**: Initializes the Keras OCR pipeline and processes the images in batch mode.
+The processed images will be saved in the `outputTess` directory after running the script.
 
 ---
 
-This README should make it clear how to use your script and what it does. You can adjust it to fit your specific needs or environment further.
+Feel free to modify any parts of the `README.md` to better suit your project's style!
