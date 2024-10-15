@@ -350,7 +350,7 @@ Feel free to modify any parts of the `README.md` to better suit your project's s
 
 
 
-
+The script constructs a binary mask by drawing rectangles around the bounding boxes of the individual characters. This mask is then used in the inpainting process, where the OpenCV inpainting function replaces the masked areas with neighboring pixel information, effectively "painting over" the detected characters to remove them from the image.
 
 
 
