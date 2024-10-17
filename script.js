@@ -93,3 +93,76 @@ function libraryFormSubmit(e) {
 
     e.preventDefault();
 }
+
+
+
+
+import json
+import sys
+from PIL import Image, ImageDraw
+
+def draw_shapes(json_path, output_path):
+    # Step 1: Read the JSON file
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+
+    # Step 2: Create a blank image (let's assume a default size like 500x500)
+    img_width, img_height = 500, 500
+    img = Image.new('RGB', (img_width, img_height), color='white')
+    draw = ImageDraw.Draw(img)
+    
+    # Step 3: Loop through each shape in the JSON
+    for shape in data.get('shapes', []):
+        shape_type = shape.get('shape_type')
+        points = shape.get('points')
+        color = shape.get('shape_color', '#000000')  # Default color is black
+        flag = shape.get('flag', True)  # Default flag is True
+
+        if not flag:
+            # Skip shapes where the flag is False
+            continue
+        
+        # Step 4: Handle different shape types
+        if shape_type == "rectangle":
+            # For rectangles, the points should contain two points: top-left and bottom-right
+            if len(points) == 2:
+                top_left = points[0]
+                bottom_right = points[1]
+                # Ensure the coordinates are integers
+                top_left = [int(coord) for coord in top_left]
+                bottom_right = [int(coord) for coord in bottom_right]
+                try:
+                    draw.rectangle([top_left, bottom_right], outline=color, width=2)
+                except ValueError as e:
+                    print(f"Error drawing rectangle with points {top_left} and {bottom_right}: {e}")
+        
+        elif shape_type == "polygon":
+            # For polygons, the points contain multiple coordinates
+            if len(points) > 2:
+                # Convert all points to integer coordinates
+                polygon_points = [(int(p[0]), int(p[1])) for p in points]
+                try:
+                    draw.polygon(polygon_points, outline=color)
+                except ValueError as e:
+                    print(f"Error drawing polygon with points {polygon_points}: {e}")
+    
+    # Step 5: Save the image to the output path
+    img.save(output_path)
+    print(f"Image saved to {output_path}")
+
+if __name__ == "__main__":
+    # Command-line arguments: json file and output path
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <json_file> <output_image_path>")
+        sys.exit(1)
+
+    json_file = sys.argv[1]
+    output_image_path = sys.argv[2]
+    
+    # Call the function to draw shapes and save the image
+    draw_shapes(json_file, output_image_path)
+
+
+
+
+
