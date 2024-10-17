@@ -350,7 +350,48 @@ Feel free to modify any parts of the `README.md` to better suit your project's s
 
 
 
-The script constructs a binary mask by drawing rectangles around the bounding boxes of the individual characters. This mask is then used in the inpainting process, where the OpenCV inpainting function replaces the masked areas with neighboring pixel information, effectively "painting over" the detected characters to remove them from the image.
+The script constructs a binary mask by drawing rectangles around the bounding boxes of the individual 
+characters. This mask is then used in the inpainting process, where the OpenCV inpainting function replaces the masked areas with neighboring pixel information, effectively "painting over" the detected characters to remove them from the image.
 
+
+
+
+
+
+import json
+import sys
+from PIL import Image, ImageDraw
+
+def draw_rectangles(json_path, output_path):
+    # Step 1: Read the JSON file
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    
+    # Step 2: Create a blank image (let's assume a default size like 500x500)
+    img_width, img_height = 500, 500
+    img = Image.new('RGB', (img_width, img_height), color='white')
+    draw = ImageDraw.Draw(img)
+    
+    # Step 3: Loop through rectangles and draw them
+    for rect in data.get('rectangles', []):
+        x, y = rect['x'], rect['y']
+        width, height = rect['width'], rect['height']
+        draw.rectangle([x, y, x + width, y + height], outline='black', width=2)
+    
+    # Step 4: Save the image to the output path
+    img.save(output_path)
+    print(f"Image saved to {output_path}")
+
+if __name__ == "__main__":
+    # Command-line arguments: json file and output path
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <json_file> <output_image_path>")
+        sys.exit(1)
+
+    json_file = sys.argv[1]
+    output_image_path = sys.argv[2]
+    
+    # Call the function to draw rectangles and save the image
+    draw_rectangles(json_file, output_image_path)
 
 
