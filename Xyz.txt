@@ -1,3 +1,98 @@
+
+import cv2
+import json
+import os
+import numpy as np
+
+# Function to remove red borders around rectangles
+def remove_red_borders(image_path, shapes, output_dir):
+    # Load the image
+    img = cv2.imread(image_path)
+    if img is None:
+        print(f"Error: Unable to load image '{image_path}'")
+        return
+
+    # Define the lower and upper boundaries for the red color in BGR format
+    lower_red = np.array([0, 0, 150])  # Lower bound for red color
+    upper_red = np.array([100, 100, 255])  # Upper bound for red color
+
+    # Iterate over each shape in the JSON file
+    for shape in shapes:
+        if shape['shape_type'] == 'rectangle':
+            points = shape['points']
+            x_min, y_min = int(points[0][0]), int(points[0][1])
+            x_max, y_max = int(points[1][0]), int(points[1][1])
+
+            # Extract the region of interest (ROI) for the rectangle
+            roi = img[y_min:y_max, x_min:x_max]
+
+            # Create a mask to detect red pixels in the ROI
+            mask = cv2.inRange(roi, lower_red, upper_red)
+
+            # Replace the red pixels (detected in the mask) with the average color of the neighboring pixels
+            roi[mask != 0] = cv2.medianBlur(roi, 5)[mask != 0]
+
+            # Put the ROI back into the image after border removal
+            img[y_min:y_max, x_min:x_max] = roi
+
+    # Save the modified image
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, os.path.basename(image_path))
+    cv2.imwrite(output_path, img)
+    print(f"Modified image saved to {output_path}")
+
+# Main function to load the JSON and process the image
+def main(json_file, output_dir):
+    # Load the JSON file
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+
+    # Get the image path from the JSON file
+    image_path = data["imagePath"]
+
+    # If the image path is relative, assume it's in the same directory as the JSON file
+    if not os.path.isabs(image_path):
+        json_dir = os.path.dirname(json_file)
+        image_path = os.path.join(json_dir, image_path)
+
+    # Handle case where the image might have a _mask suffix
+    if not os.path.exists(image_path):
+        base_name, ext = os.path.splitext(image_path)
+        image_path_mask = f"{base_name}_mask{ext}"
+        if os.path.exists(image_path_mask):
+            image_path = image_path_mask
+        else:
+            print(f"Error: Neither '{image_path}' nor '{image_path_mask}' found.")
+            return
+
+    # Get the shapes (rectangles) from the JSON file
+    shapes = data["shapes"]
+
+    # Remove the red borders around rectangles in the image
+    remove_red_borders(image_path, shapes, output_dir)
+
+# Run the script
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 3:
+        print("Usage: python script_name.py shapes.json output_directory")
+        sys.exit(1)
+
+    json_file = sys.argv[1]
+    output_dir = sys.argv[2]
+    main(json_file, output_dir)
+
+
+
+
+
+
+
+
+
+
+
+
 import cv2
 import numpy as np
 import json
