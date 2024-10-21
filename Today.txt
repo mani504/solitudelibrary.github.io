@@ -28,8 +28,14 @@ def process_image_with_json(json_file, output_dir):
     with open(json_file, 'r') as f:
         data = json.load(f)
 
-    # Get the image path from the JSON data
-    image_path = data['imagePath']
+    # Get the directory of the JSON file
+    json_dir = os.path.dirname(json_file)
+
+    # Get the image filename from the JSON
+    image_filename = data['imagePath']
+    
+    # Construct the full image path by combining the JSON directory and the image filename
+    image_path = os.path.join(json_dir, image_filename)
     
     # Check if the image path exists
     if not os.path.exists(image_path):
@@ -47,11 +53,10 @@ def process_image_with_json(json_file, output_dir):
     mask = create_mask_from_json(data, img.shape)
     
     # Save the mask image
-    image_filename = os.path.basename(image_path)
-    mask_output_path = os.path.join(output_dir, f"masked_{image_filename}")
-    cv2.imwrite(mask_output_path, mask)
+    masked_output_path = os.path.join(output_dir, f"masked_{image_filename}")
+    cv2.imwrite(masked_output_path, mask)
 
-    print(f"Masked image saved at: {mask_output_path}")
+    print(f"Masked image saved at: {masked_output_path}")
 
 # Main function to handle command-line arguments and run the script
 def main():
