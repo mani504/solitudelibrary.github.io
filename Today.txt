@@ -1,0 +1,74 @@
+import os
+import json
+import cv2
+import numpy as np
+import sys
+
+# Function to create a mask from the bounding boxes in the JSON
+def create_mask_from_json(json_data, image_shape):
+    mask = np.zeros(image_shape[:2], dtype="uint8")
+    
+    # Iterate through all the shapes (bounding boxes)
+    for shape in json_data['shapes']:
+        if shape['shape_type'] == 'rectangle':
+            points = shape['points']
+            x_min = int(points[0][0])
+            y_min = int(points[0][1])
+            x_max = int(points[1][0])
+            y_max = int(points[1][1])
+            
+            # Draw rectangle (mask) based on the points
+            cv2.rectangle(mask, (x_min, y_min), (x_max, y_max), 255, -1)
+
+    return mask
+
+# Function to process the image and save the masked output
+def process_image_with_json(json_file, output_dir):
+    # Load JSON data
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+
+    # Get the image path from the JSON data
+    image_path = data['imagePath']
+    
+    # Check if the image path exists
+    if not os.path.exists(image_path):
+        print(f"Error: Image path '{image_path}' does not exist.")
+        return
+
+    # Read the image
+    img = cv2.imread(image_path)
+
+    if img is None:
+        print(f"Error: Failed to load the image at '{image_path}'.")
+        return
+    
+    # Create a mask from the bounding boxes in the JSON
+    mask = create_mask_from_json(data, img.shape)
+    
+    # Save the mask image
+    image_filename = os.path.basename(image_path)
+    mask_output_path = os.path.join(output_dir, f"masked_{image_filename}")
+    cv2.imwrite(mask_output_path, mask)
+
+    print(f"Masked image saved at: {mask_output_path}")
+
+# Main function to handle command-line arguments and run the script
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python script_name.py <json_file> <output_directory>")
+        return
+    
+    # Get the input JSON file and output directory from command-line arguments
+    json_file = sys.argv[1]
+    output_dir = sys.argv[2]
+
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Process the image and save the masked output
+    process_image_with_json(json_file, output_dir)
+
+# Run the script
+if __name__ == "__main__":
+    main()
