@@ -1,0 +1,178 @@
+import os
+import json
+import sys
+from PIL import Image, ImageDraw
+
+# Function to find matching image with suffix
+def find_image(image_path, folder_path):
+    base_name = os.path.basename(image_path).split('.')[0]
+    for file_name in os.listdir(folder_path):
+        if file_name.startswith(base_name) and file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+            return os.path.join(folder_path, file_name)
+    return None
+
+# Function to enlarge the rectangle
+def enlarge_rectangle(top_left, bottom_right, padding=5, image_width=None, image_height=None):
+    # Enlarge the rectangle by adding/subtracting the padding value
+    new_top_left = [max(top_left[0] - padding, 0), max(top_left[1] - padding, 0)]
+    new_bottom_right = [min(bottom_right[0] + padding, image_width), min(bottom_right[1] + padding, image_height)]
+    return new_top_left, new_bottom_right
+
+# Function to draw white borders on the image with enlarged rectangles
+def paint_white_borders(image, rectangles, padding=5):
+    draw = ImageDraw.Draw(image)
+    image_width, image_height = image.size
+
+    # Loop through all the shapes in the JSON
+    for rect in rectangles:
+        top_left = rect['points'][0]
+        bottom_right = rect['points'][1]
+
+        # Enlarge the rectangle
+        new_top_left, new_bottom_right = enlarge_rectangle(
+            top_left, bottom_right, padding, image_width, image_height
+        )
+
+        # Draw enlarged rectangle border with white color (255, 255, 255)
+        draw.rectangle([new_top_left, new_bottom_right], outline="white")
+    
+    return image
+
+# Main function to process a single JSON file and its corresponding image
+def process_image(json_file, output_folder):
+    json_folder = os.path.dirname(json_file)  # Get the directory where the JSON is located
+
+    # Open and parse the JSON file
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+    
+    # Get the image path and find the actual image with suffix in the same folder
+    image_path = data['imagePath']
+    image_file = find_image(image_path, json_folder)
+    
+    if image_file:
+        # Open the image
+        image = Image.open(image_file)
+        
+        # Get rectangles data from shapes
+        rectangles = data['shapes']
+        
+        # Paint white borders on the enlarged rectangles
+        edited_image = paint_white_borders(image, rectangles, padding=5)
+        
+        # Create the output folder if it doesn't exist
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        # Save the edited image in the output directory with "_edited" suffix
+        base_image_name = os.path.basename(image_file).split('.')[0]
+        save_path = os.path.join(output_folder, f"{base_image_name}_edited.jpg")
+        edited_image.save(save_path)
+        
+        print(f"Processed and saved: {save_path}")
+    else:
+        print(f"Image not found for: {image_path}")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <path_to_json_file> <path_to_output_directory>")
+        sys.exit(1)
+
+    json_file = sys.argv[1]
+    output_folder = sys.argv[2]
+
+    # Check if the JSON file exists
+    if not os.path.exists(json_file):
+        print(f"Error: JSON file '{json_file}' does not exist.")
+        sys.exit(1)
+
+    # Process the JSON file and corresponding image
+    process_image(json_file, output_folder)
+
+
+
+
+
+
+
+import os
+import json
+import sys
+from PIL import Image, ImageDraw
+
+# Function to find the matching image with a suffix in the same directory
+def find_image(image_path, folder_path):
+    base_name = os.path.basename(image_path).split('.')[0]
+    for file_name in os.listdir(folder_path):
+        if file_name.startswith(base_name) and file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+            return os.path.join(folder_path, file_name)
+    return None
+
+# Function to draw white borders on the image with a slightly larger rectangle
+def paint_white_borders(image, rectangles, expand_by=5):
+    draw = ImageDraw.Draw(image)
+    
+    # Loop through all the shapes in the JSON
+    for rect in rectangles:
+        top_left = rect['points'][0]
+        bottom_right = rect['points'][1]
+
+        # Expand the rectangle by 'expand_by' pixels
+        expanded_top_left = (top_left[0] - expand_by, top_left[1] - expand_by)
+        expanded_bottom_right = (bottom_right[0] + expand_by, bottom_right[1] + expand_by)
+        
+        # Draw the expanded rectangle with a white border
+        draw.rectangle([expanded_top_left, expanded_bottom_right], outline="white")
+    
+    return image
+
+# Main function to process a single JSON file and its corresponding image
+def process_image(json_file, output_folder):
+    json_folder = os.path.dirname(json_file)  # Get the directory where the JSON is located
+
+    # Open and parse the JSON file
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+    
+    # Get the image path and find the actual image with suffix in the same folder
+    image_path = data['imagePath']
+    image_file = find_image(image_path, json_folder)
+    
+    if image_file:
+        # Open the image
+        image = Image.open(image_file)
+        
+        # Get rectangles data from shapes
+        rectangles = data['shapes']
+        
+        # Paint white borders on the rectangles (with expansion)
+        edited_image = paint_white_borders(image, rectangles, expand_by=10)  # Expand by 10 pixels
+        
+        # Create the output folder if it doesn't exist
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        # Save the edited image in the output directory with "_edited" suffix
+        base_image_name = os.path.basename(image_file).split('.')[0]
+        save_path = os.path.join(output_folder, f"{base_image_name}_edited.jpg")
+        edited_image.save(save_path)
+        
+        print(f"Processed and saved: {save_path}")
+    else:
+        print(f"Image not found for: {image_path}")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <path_to_json_file> <path_to_output_directory>")
+        sys.exit(1)
+
+    json_file = sys.argv[1]
+    output_folder = sys.argv[2]
+
+    # Check if the JSON file exists
+    if not os.path.exists(json_file):
+        print(f"Error: JSON file '{json_file}' does not exist.")
+        sys.exit(1)
+
+    # Process the JSON file and corresponding image
+    process_image(json_file, output_folder)
