@@ -42,3 +42,35 @@ def create_text_mask(image_path, output_mask_path):
 image_path = 'input_image.jpg'  # Path to your input image
 output_mask_path = 'text_mask.png'  # Path to save the mask
 create_text_mask(image_path, output_mask_path)
+
+
+
+
+
+import cv2
+import keras_ocr
+
+# Initialize the Keras-OCR pipeline
+pipeline = keras_ocr.pipeline.Pipeline()
+
+# Path to the input image
+image_path = 'image1.jpg'
+
+# Read the image
+image = cv2.imread(image_path)
+
+# Perform OCR to get text and bounding boxes
+results = pipeline.recognize([image])
+
+# Loop through the detected text regions
+for text, box in results[0]:
+    # Convert the box to integer coordinates
+    box = [(int(x), int(y)) for x, y in box]
+    
+    # Draw a white-filled polygon (bounding rectangle)
+    cv2.fillPoly(image, [np.array(box)], (255, 255, 255))
+
+# Save or display the result
+output_path = 'output_image.jpg'
+cv2.imwrite(output_path, image)
+print(f"Modified image saved to {output_path}")
