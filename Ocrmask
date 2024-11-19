@@ -74,3 +74,50 @@ for text, box in results[0]:
 output_path = 'output_image.jpg'
 cv2.imwrite(output_path, image)
 print(f"Modified image saved to {output_path}")
+
+
+
+
+
+
+
+
+
+import cv2
+import keras_ocr
+import numpy as np
+
+# Initialize the Keras-OCR pipeline
+pipeline = keras_ocr.pipeline.Pipeline()
+
+# Path to the input image
+image_path = 'image1.jpg'
+
+# Read the image
+image = cv2.imread(image_path)
+
+# Perform OCR to get text and bounding boxes
+results = pipeline.recognize([image])
+
+# Create a blank black image (binary mask)
+binary_mask = np.zeros_like(image, dtype=np.uint8)
+
+# Loop through the detected text regions
+for text, box in results[0]:
+    # Convert the box to integer coordinates
+    box = [(int(x), int(y)) for x, y in box]
+    
+    # Draw a white-filled polygon (bounding rectangle) on the binary mask
+    cv2.fillPoly(binary_mask, [np.array(box)], (255, 255, 255))
+
+# Convert the mask to grayscale (binary mask with 255 for areas to inpaint)
+binary_mask = cv2.cvtColor(binary_mask, cv2.COLOR_BGR2GRAY)
+
+# Thresholding to ensure pure black and white mask
+_, binary_mask = cv2.threshold(binary_mask, 1, 255, cv2.THRESH_BINARY)
+
+# Save or display the binary mask
+output_mask_path = 'binary_mask_for_lama.jpg'
+cv2.imwrite(output_mask_path, binary_mask)
+
+print(f"Binary mask saved to {output_mask_path}")
