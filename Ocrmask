@@ -1,0 +1,44 @@
+import keras_ocr
+import cv2
+import numpy as np
+
+# Initialize the keras-ocr pipeline
+pipeline = keras_ocr.pipeline.Pipeline()
+
+def create_text_mask(image_path, output_mask_path):
+    """
+    Creates a binary mask where detected text regions are white (255) 
+    and the rest of the image is black (0).
+    Args:
+        image_path: Path to the input image.
+        output_mask_path: Path to save the output binary mask.
+    """
+    # Read the image
+    image = keras_ocr.tools.read(image_path)
+
+    # Detect text
+    predictions = pipeline.recognize([image])[0]
+
+    # Create an empty mask with the same dimensions as the image
+    mask = np.zeros_like(image, dtype=np.uint8)
+
+    # Iterate through the detected text boxes
+    for box, text in predictions:
+        # Convert box coordinates to integers
+        box = np.array(box).astype(np.int32)
+
+        # Draw the rectangle on the mask with white color (255)
+        cv2.fillPoly(mask, [box], color=(255, 255, 255))
+
+    # Convert the mask to grayscale (single channel)
+    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+
+    # Save the binary mask
+    cv2.imwrite(output_mask_path, mask)
+    print(f"Mask saved to: {output_mask_path}")
+
+
+# Example usage
+image_path = 'input_image.jpg'  # Path to your input image
+output_mask_path = 'text_mask.png'  # Path to save the mask
+create_text_mask(image_path, output_mask_path)
