@@ -1,0 +1,114 @@
+import os
+import sys
+import cv2
+import keras_ocr
+import numpy as np
+from simple_lama_inpainting import SimpleLama
+from PIL import Image
+
+
+def detect_text_and_create_mask(image_path, pipeline):
+    """
+    Detect text in an image using Keras-OCR and generate a binary mask.
+
+    Args:
+        image_path (str): Path to the input image.
+        pipeline (keras_ocr.pipeline.Pipeline): Preloaded Keras-OCR pipeline.
+
+    Returns:
+        np.ndarray: Binary mask with white regions for detected text.
+    """
+    image = cv2.imread(image_path)
+    if image is None:
+        raise FileNotFoundError(f"Input image not found: {image_path}")
+
+    results = pipeline.recognize([image])
+    binary_mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
+
+    for _, box in results[0]:
+        box = [(int(x), int(y)) for x, y in box]
+        cv2.fillPoly(binary_mask, [np.array(box)], 255)
+
+    return binary_mask
+
+
+def perform_inpainting(image_path, binary_mask, simple_lama):
+    """
+    Perform inpainting using LaMa.
+
+    Args:
+        image_path (str): Path to the input image.
+        binary_mask (np.ndarray): Binary mask for inpainting.
+        simple_lama (SimpleLama): Preloaded LaMa model.
+
+    Returns:
+        PIL.Image: Inpainted image.
+    """
+    image_pil = Image.open(image_path)
+    mask_pil = Image.fromarray(binary_mask)
+    result = simple_lama(image_pil, mask_pil)
+    return result
+
+
+def process_images(input_dir, output_dir, pipeline, simple_lama):
+    """
+    Process all images in the input directory: detect text, create masks, and inpaint.
+
+    Args:
+        input_dir (str): Path to the directory containing input images.
+        output_dir (str): Path to the directory to save inpainted images.
+        pipeline (keras_ocr.pipeline.Pipeline): Preloaded Keras-OCR pipeline.
+        simple_lama (SimpleLama): Preloaded LaMa model.
+    """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    image_files = [
+        f for f in os.listdir(input_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+    ]
+
+    if not image_files:
+        print(f"No valid images found in the directory: {input_dir}")
+        return
+
+    for image_file in image_files:
+        input_path = os.path.join(input_dir, image_file)
+        output_path = os.path.join(output_dir, image_file)
+
+        try:
+            print(f"Processing: {input_path}")
+
+            # Detect text and create binary mask
+            binary_mask = detect_text_and_create_mask(input_path, pipeline)
+
+            # Perform inpainting
+            inpainted_image = perform_inpainting(input_path, binary_mask, simple_lama)
+
+            # Save the output image
+            inpainted_image.save(output_path)
+            print(f"Saved inpainted image: {output_path}")
+
+        except Exception as e:
+            print(f"Failed to process {image_file}: {e}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <input_directory> <output_directory>")
+        sys.exit(1)
+
+    input_directory = sys.argv[1]
+    output_directory = sys.argv[2]
+
+    if not os.path.exists(input_directory):
+        print(f"Input directory does not exist: {input_directory}")
+        sys.exit(1)
+
+    # Initialize models once
+    print("Loading models...")
+    ocr_pipeline = keras_ocr.pipeline.Pipeline()  # Load Keras-OCR pipeline
+    lama_model = SimpleLama()  # Load LaMa model
+
+    print("Starting batch processing...")
+    process_images(input_directory, output_directory, ocr_pipeline, lama_model)
+    print("Batch processing completed.")
