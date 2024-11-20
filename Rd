@@ -50,3 +50,82 @@ We designed a pipeline that integrates **Keras-OCR for text detection** with **L
 1. Install the required Python libraries:
    ```bash
    pip install -r requirements.txt
+
+
+
+
+
+
+
+
+
+
+
+
+# Text Removal and Inpainting for Satellite/Map Images
+
+## Problem Statement
+Satellite images and map visuals often contain annotations, labels, and text that obstruct important underlying details. For tasks such as geographical analysis, urban planning, or automated map processing, removing this text while preserving the structural integrity of the image is crucial.
+
+### Challenges with Traditional Inpainting
+Basic inpainting methods struggle with satellite or map images because:
+1. **Text Detection**: Simple methods often fail to detect and isolate text in complex images.
+2. **Binary Masks**: Manually creating masks for irregular or rotated text is inefficient and error-prone.
+3. **Structured Backgrounds**: Satellite images and maps often have repeating patterns (e.g., roads, rivers, fields) that require precise reconstruction, which naive inpainting cannot achieve.
+
+---
+
+## Solution Overview
+We implemented a two-step pipeline:
+1. **Text Detection**: Using **Keras-OCR**, we detect text in the image and generate binary masks.
+2. **Inpainting**: Using **LaMa**, we inpaint the detected text regions to produce a clean, seamless image.
+
+---
+
+## Binary Mask Approaches
+Two approaches were used for generating the binary mask, each producing different results:
+
+### **1. Segmented Text Mask**
+- The binary mask contains **only the text itself** as white pixels, while the rest of the image is black.
+- When passed to the LaMa inpainting model, this approach produced **partially cleaned results**, leaving traces of text in some cases.
+
+#### Example
+- **Input Image**:  
+  *Insert image of satellite/map with text annotations here.*  
+- **Binary Mask**:  
+  *Insert binary mask with segmented text here.*  
+- **Inpainted Result**:  
+  *Insert partially cleaned result image here.*  
+
+---
+
+### **2. Full Rectangle Mask**
+- The binary mask highlights the **entire bounding rectangle** around the text in white, with the rest of the image as black.
+- This approach gave **superior results**, as the LaMa model could completely remove the text and reconstruct the surrounding area effectively.
+
+#### Example
+- **Input Image**:  
+  *Insert image of satellite/map with text annotations here.*  
+- **Binary Mask**:  
+  *Insert binary mask with bounding rectangles here.*  
+- **Inpainted Result**:  
+  *Insert fully cleaned result image here.*  
+
+---
+
+## Final Workflow
+
+1. **Input Directory**: Provide a directory of images containing text annotations.
+2. **Text Detection**: Detect text regions using Keras-OCR.
+3. **Binary Mask Creation**: Generate a binary mask using the **full rectangle mask approach**.
+4. **Inpainting**: Use LaMa to inpaint the masked regions.
+5. **Output Directory**: Save the inpainted images to the specified directory.
+
+---
+
+## How to Use
+
+### Installation
+1. Install the required Python libraries:
+   ```bash
+   pip install -r requirements.txt
