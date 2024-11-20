@@ -1,0 +1,52 @@
+# Text Removal and Inpainting for Satellite/Map Images
+
+## Problem Statement
+Satellite images and map visuals often contain annotations, labels, and text that may obstruct important underlying details. In scenarios like geographical analysis, urban planning, or automated map processing, this text needs to be removed while preserving the integrity of the surrounding areas.  
+
+Traditional inpainting techniques can handle small irregular regions effectively but fail when applied to structured and larger text-like areas, especially in satellite or map images where the environment demands precision. This project presents a robust pipeline for detecting and removing text, followed by realistic inpainting of the affected areas.
+
+---
+
+## Why Simple Inpainting Fails for Satellite/Map Images
+In traditional inpainting techniques, like those using naive mask generation:
+- **Text Detection**: Simple methods cannot detect structured text accurately, leading to over-inpainting or missed regions.
+- **Binary Mask Creation**: Simple thresholding or manual mask generation fails for text with varying fonts, sizes, or rotations.
+- **Structural Preservation**: Basic inpainting does not account for the highly structured and patterned nature of satellite images or maps, often resulting in blurry or unrealistic outputs.
+
+For instance:
+- Labels over roads, rivers, or dense cityscapes disrupt patterns.
+- Simple inpainting introduces artifacts that ruin the contextual information in these critical areas.
+
+---
+
+## Our Solution
+We designed a pipeline that integrates **Keras-OCR for text detection** with **LaMa inpainting** to ensure robust removal of text annotations from satellite and map images while preserving the structural and visual integrity of the surrounding content.
+
+### Key Steps in the Pipeline
+1. **Text Detection**:
+   - Use Keras-OCR to detect text regions in the input image.
+   - The bounding boxes of detected text are used to create a **binary mask**, where text regions are marked in white, and the rest is black.
+
+2. **Binary Mask Creation**:
+   - The mask accurately highlights the regions requiring inpainting without including unnecessary artifacts or missing any critical text.
+
+3. **LaMa Inpainting**:
+   - Using the binary mask, the LaMa model inpaints the detected regions, ensuring seamless blending with the surrounding environment.  
+   - It effectively handles structured and textured regions like roads, rivers, or buildings.
+
+### Process Workflow
+1. **Input**:
+   - Satellite or map images in a directory (`input`).
+2. **Intermediate Step**:
+   - A binary mask is created, highlighting text areas.
+3. **Output**:
+   - Final inpainted images are saved in the specified output directory (`output`).
+
+---
+
+## How to Use
+
+### Prerequisites
+1. Install the required Python libraries:
+   ```bash
+   pip install -r requirements.txt
