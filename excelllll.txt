@@ -1,0 +1,52 @@
+    private final DataFormatter dataFormatter = new DataFormatter();
+
+    public void saveExcelData(InputStream inputStream) {
+        try (Workbook workbook = WorkbookFactory.create(inputStream)) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            List<RecordData> records = IntStream.range(1, sheet.getPhysicalNumberOfRows()) // Start from row 1 to skip the header
+                    .mapToObj(sheet::getRow)
+                    .filter(row -> row != null && row.getPhysicalNumberOfCells() > 0) // Filter out empty rows
+                    .map(this::mapRowToRecordData) // Map each row to a RecordData
+                    .filter(record -> record != null) // Filter out invalid rows
+                    .collect(Collectors.toList());
+
+            if (!records.isEmpty()) {
+                recordRepository.saveAll(records);
+                logger.info("Successfully saved {} records to the database.", records.size());
+            } else {
+                logger.warn("No valid records found in the Excel file.");
+            }
+
+        } catch (Exception e) {
+            logger.error("Error processing Excel file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to process Excel file", e);
+        }
+    }
+
+    private RecordData mapRowToRecordData(Row row) {
+        try {
+            // Use DataFormatter to retrieve cell values as strings
+            String name = (row.getCell(0) != null) ? dataFormatter.formatCellValue(row.getCell(0)).trim() : null;
+            String serialNumber = (row.getCell(1) != null) ? dataFormatter.formatCellValue(row.getCell(1)).trim() : null;
+
+            // Skip rows with missing or invalid data
+            if (serialNumber == null || serialNumber.isEmpty()) {
+                logger.warn("Skipping row at index {}: Missing serial number", row.getRowNum());
+                return null;
+            }
+            if (name == null || name.isEmpty()) {
+                logger.warn("Skipping row at index {}: Missing name", row.getRowNum());
+                return null;
+            }
+
+            return RecordData.builder()
+                    .serialNumber(serialNumber)
+                    .name(name)
+                    .build();
+
+        } catch (Exception e) {
+            logger.error("Error parsing row at index {}: {}", row.getRowNum(), e.getMessage(), e);
+            return null; // Return null for invalid rows
+        }
+    }
