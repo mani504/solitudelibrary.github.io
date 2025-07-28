@@ -1,0 +1,174 @@
+    @Transactional
+    @PostMapping("/{id}/service-verification/result-diff")
+    public FlowConfigResultDiffResponseDTO resultDiffAct(@PathVariable Long id, @RequestBody List<NormalDeterminationCriteriaDTO> normalDeterminationCriteriaDTOList)
+            throws AppUserException, AppServerException {
+        log.info("Request received for result-diff with id: {}, NormalDeterminationCriteriaDTO: {}", id, normalDeterminationCriteriaDTOList.toString());
+
+        FlowConfigFullResponseDTO flowConfigFullResponseDTO;
+
+        try {
+            log.debug("Fetching id details: {}", id);
+            flowConfigFullResponseDTO = flowConfigService.getFlowConfigById(id);
+        } catch (NoSuchElementException ex) {
+            log.debug("Id does not exist.");
+            throw new AppUserException("Id does not exist.");
+        }
+
+        List<String> devices = flowConfigFullResponseDTO.getData().getTargetDevices()
+                .stream()
+                .map(TargetDeviceDTO::getName)
+                .collect(Collectors.toList());
+
+        log.debug("Target devices: {}", devices);
+
+        // Better Possibility TODO - fetch normalDeterminationCriteriaList from id.
+
+        log.debug("Current session flowConfigCommandResultResponseDtoMapPre Map state: {}", this.flowConfigCommandResultResponseDtoMapPre);
+        log.debug("Current session flowConfigCommandResultResponseDtoMapPost Map state: {}", this.flowConfigCommandResultResponseDtoMapPost);
+
+        if (!(this.flowConfigCommandResultResponseDtoMapPre.containsKey(id.toString()) && this.flowConfigCommandResultResponseDtoMapPost.containsKey(id.toString()))) {
+            log.debug("Id '{}' is not created in this session", id);
+            // return new FlowConfigResultDiffResponseDTO();
+        }
+
+        Map<String, FlowConfigCommandResultResponseDTO> flowConfigCommandResultResponseDTODeviceMapPre = this.flowConfigCommandResultResponseDtoMapPre.get(id.toString());
+        log.debug("In this session, flowConfigCommandResultResponseDTODeviceMapPre: {}", flowConfigCommandResultResponseDTODeviceMapPre.toString());
+
+        List<SvrDeviceResult> flowConfigCommandResultResponseDTODeviceListPre = svrDeviceResultRepository.findByID_FlowConfigIdAndID_Mode(id, "pre");
+        flowConfigCommandResultResponseDTODeviceMapPre = flowConfigCommandResultResponseDTODeviceListPre.stream()
+                .collect(Collectors.toMap(
+                        device -> device.getid().getDeviceId(),
+                        FlowConfigService::convertCommandResultEntityToResultResponseDto // Convert to DTO
+                ));
+
+        log.debug("But actual value from DB, flowConfigCommandResultResponseDTODeviceMapPre = {}", flowConfigCommandResultResponseDTODeviceMapPre);
+
+        Map<String, FlowConfigCommandResultResponseDTO> flowConfigCommandResultResponseDTODeviceMapPost = this.flowConfigCommandResultResponseDtoMapPost.get(id.toString());
+        log.debug("In this session, flowConfigCommandResultResponseDTODeviceMapPost: {}", flowConfigCommandResultResponseDTODeviceMapPost.toString());
+        List<SvrDeviceResult> flowConfigCommandResultResponseDTODeviceListPost = svrDeviceResultRepository.findByID_FlowConfigIdAndID_Mode(id, "post");
+        flowConfigCommandResultResponseDTODeviceMapPost = flowConfigCommandResultResponseDTODeviceListPost.stream()
+                .collect(Collectors.toMap(
+                        device -> device.getid().getDeviceId(),
+                        FlowConfigService::convertCommandResultEntityToResultResponseDto // Convert to DTO
+                ));
+
+        log.debug("But actual value from DB, flowConfigCommandResultResponseDTODeviceMapPost = {}", flowConfigCommandResultResponseDTODeviceMapPost);
+
+        FlowConfigResultDiffResponseDTO flowConfigResultDiffResponseDTO = new FlowConfigResultDiffResponseDTO();
+        List<FlowConfigResultDiffDeviceDataDTO> flowConfigResultDiffDeviceDataDTOList = new ArrayList<>();
+
+        for (String device : devices) {
+            log.debug("Considering device: {}", device);
+            if (!(flowConfigCommandResultResponseDTODeviceMapPre.containsKey(device) && flowConfigCommandResultResponseDTODeviceMapPost.containsKey(device))) {
+                log.debug("Device {} not found for both pre and post", device);
+                continue;
+            }
+
+            FlowConfigCommandResultResponseDTO flowConfigCommandResultResponseDTOPre = flowConfigCommandResultResponseDTODeviceMapPre.get(device);
+            log.debug("FlowConfigCommandResultResponseDTOPre: {}", flowConfigCommandResultResponseDTOPre.toString());
+
+            FlowConfigCommandResultResponseDTO flowConfigCommandResultResponseDTOPost = flowConfigCommandResultResponseDTODeviceMapPost.get(device);
+            log.debug("FlowConfigCommandResultResponseDTOPost: {}", flowConfigCommandResultResponseDTOPost.toString());
+
+            FlowConfigResultDiffDeviceDataDTO flowConfigResultDiffDeviceDataDTO = new FlowConfigResultDiffDeviceDataDTO();
+            flowConfigResultDiffDeviceDataDTO.setDevice(device);
+            Map<String, CompareElements> determinationCriteriaComparisons =
+                    FlowConfigService.createBasicDeterminationCriteriaComparisonMap(flowConfigCommandResultResponseDTOPre, flowConfigCommandResultResponseDTOPost);
+            log.debug("Default determinationCriteriaComparisons map: {}", determinationCriteriaComparisons.toString());
+
+            for (NormalDeterminationCriteriaDTO normalDeterminationCriteriaDTO : normalDeterminationCriteriaDTOList) {
+                log.debug("Considering NormalDeterminationCriteriaDTO: {}", normalDeterminationCriteriaDTO.toString());
+                if (normalDeterminationCriteriaDTO.getCriteria().equals("") || normalDeterminationCriteriaDTO.getCondition().equals("") ||
+                        normalDeterminationCriteriaDTO.getCriteria() == null || normalDeterminationCriteriaDTO.getCondition() == null) {
+                    log.error("Unexpected values found for criteria or condition");
+                    continue;
+                }
+                try {
+                    String field = FlowConfigService.getFieldName(normalDeterminationCriteriaDTO);
+
+                    Object value1 = determinationCriteriaComparisons.get(field).getValue1();
+                    Object value2 = determinationCriteriaComparisons.get(field).getValue2();
+                    String condition = normalDeterminationCriteriaDTO.getCondition();
+                    log.debug("Field: {}, Value1: {}, Value2: {}, condition: {}", field, value1, value2, condition);
+
+                    boolean isChanged = false;
+                    if ("same as before".equalsIgnoreCase(condition)) {
+                        isChanged = FlowConfigService.areValuesEqual(value1, value2);
+                    } else if (condition.startsWith("difference within")) {
+                        String[] conditionParts = condition.split("regex:");
+                        String percentageString = conditionParts[conditionParts.length - 1].replace("%", "");
+                        int percentage = Integer.parseInt(percentageString);
+
+                        isChanged = FlowConfigService.isWithinSpecifiedPercentage(value1, value2, percentage);
+                    } else {
+                        log.error("Compare value has to be either equals or within 10 percent");
+                        continue;
+                    }
+
+                    log.debug("Verdict: Field: {}, Value1: {}, Value2: {}, isChanged: {}", field, value1, value2, isChanged);
+
+                    determinationCriteriaComparisons.put(field, CompareElements.builder()
+                            .value1(value1)
+                            .value2(value2)
+                            .changed(isChanged)
+                            .build());
+
+                    log.debug("Updated determinationCriteriaComparisons: {}", determinationCriteriaComparisons.toString());
+                    // FlowConfigResultDiffDeviceDataDTOList.add(FlowConfigResultDiffDeviceDataDTO);
+                    log.debug("Updated FlowConfigResultDiffDeviceDataDTOList after: {}", FlowConfigResultDiffDeviceDataDTOList.toString());
+
+                } catch (Exception e) {
+                    log.debug("Exception happened: {}", e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            log.debug("All devices done. Recalibrating the results");
+            FlowConfigResultDiffDeviceDataDTO.setNormalDeterminationCriteriaValues(determinationCriteriaComparisons);
+            FlowConfigResultDiffDeviceDataDTO.setSuccess(determinationCriteriaComparisons.values()
+                    .stream();
+                    .noneMatch(CompareElements::isChanged));
+            log.debug("Any change for device: {}, Success (Nothing changed): {}", device, FlowConfigResultDiffDeviceDataDTO.isSuccess());
+
+            FlowConfigResultDiffDeviceDataDTOList.add(FlowConfigResultDiffDeviceDataDTO);
+
+            FlowConfig flowConfig = FlowConfigService.getFlowConfigEntityById(id);
+            Map<String, CompareElements> entityComparisons = determinationCriteriaComparisons.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> CompareElements.builder()
+                                    .value1(String.valueOf(entry.getValue().getValue1()))
+                                    .value2(String.valueOf(entry.getValue().getValue2()))
+                                    .changed(entry.getValue().isChanged())
+                                    .build()
+                    ));
+
+            SvrDeviceResultDiff svrDeviceResultDiff = SvrDeviceResultDiff.builder()
+                    .id(
+                            SvrDeviceResultDiffID.builder()
+                                    .device(device)
+                                    .flowConfigId(id)
+                                    .build()
+                    )
+                    .flowConfig(flowConfig)
+                    .success(FlowConfigResultDiffDeviceDataDTO.isSuccess())
+                    .criteriaValues(entityComparisons)
+                    .build();
+            svrDeviceResultDiffRepository.save(svrDeviceResultDiff);
+
+            log.debug("Updated FlowConfigResultDiffDeviceDataDTOList after all: {}", FlowConfigResultDiffDeviceDataDTOList.toString());
+        }
+
+        FlowConfigResultDiffResponseDTO.setData(FlowConfigResultDiffDeviceDataDTOList);
+        FlowConfigResultDiffResponseDTO.setOverallSuccess(
+                FlowConfigResultDiffDeviceDataDTOList.stream().allMatch(
+                        FlowConfigResultDiffDeviceDataDTO::isSuccess));
+
+        log.debug("Overall Success: {}", FlowConfigResultDiffResponseDTO.isOverallSuccess());
+        log.debug("Response object flowConfigResultDiffResponseDTO: {}", FlowConfigResultDiffResponseDTO);
+
+        this.FlowConfigResultDiffResponseDTOMap.put(id.toString(), FlowConfigResultDiffResponseDTO);
+        log.debug("Updated FlowConfigResultDiffResponseDTOMap: {}", this.FlowConfigResultDiffResponseDTOMap);
+
+        return FlowConfigResultDiffResponseDTO;
+
+    }
